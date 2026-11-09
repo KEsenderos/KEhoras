@@ -1,0 +1,111 @@
+<!doctype html>
+<!--
+  KEhoras ― 画面の骨組みのファイル
+  基づく仕様書：KEhoras 仕様書 v0.2
+  中身の文字や数字は js/app.js が入れます。見た目は css/style.css です。
+-->
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KEhoras</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="KEhoras">
+<meta name="theme-color" content="#1D4ED8">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<button id="update-btn" type="button" hidden></button>
+
+<main>
+  <!-- 加算タブ -->
+  <section class="tab-panel" id="panel-add">
+    <p id="month-label" class="month-label"></p>
+    <p id="total-text" class="total-text"></p>
+    <div id="progress-bar" class="progress" role="progressbar" aria-label="今月の進み具合"><div id="progress-fill" class="progress-fill"></div></div>
+    <p class="progress-line"><span id="remain-text"></span><span id="percent-text"></span></p>
+
+    <div class="drum-area">
+      <div class="drum-labels"><span>時</span><span>分</span></div>
+      <div class="drum-wrap">
+        <div id="drum-hour" class="drum" aria-label="時"></div>
+        <div class="drum-colon">:</div>
+        <div id="drum-min" class="drum" aria-label="分"></div>
+        <div class="drum-band" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <button id="add-btn" type="button" class="primary"></button>
+    <p id="add-hint" class="hint" aria-live="polite"></p>
+    <button id="undo-btn" type="button" class="secondary"></button>
+    <p id="undo-note" class="note" aria-live="polite"></p>
+    <p id="storage-warn" class="error-text"></p>
+    <p class="sync-line"><span id="sync-status"></span> <button id="sync-retry-btn" type="button" class="link-btn" hidden>もう一度</button></p>
+  </section>
+
+  <!-- 履歴タブ -->
+  <section class="tab-panel" id="panel-history">
+    <h2>今月の記録</h2>
+    <ul id="history-list" class="list"></ul>
+    <h2>過去の月</h2>
+    <ul id="month-list" class="list"></ul>
+  </section>
+
+  <!-- 設定タブ -->
+  <section class="tab-panel" id="panel-settings">
+    <h2>目標と加算</h2>
+    <label class="field">目標時間（時間）
+      <input id="set-target" type="text" inputmode="numeric" autocomplete="off">
+    </label>
+    <div class="field">加算の初期値
+      <div class="row"><select id="set-add-hour" aria-label="時"></select><span>:</span><select id="set-add-min" aria-label="分"></select></div>
+    </div>
+
+    <h2>同期（iPhoneとMacをそろえる）</h2>
+    <label class="field">GASのURL
+      <input id="set-url" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
+    </label>
+    <label class="field">合言葉
+      <input id="set-pass" type="password" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </label>
+
+    <p id="set-error" class="error-text"></p>
+    <button id="set-save-btn" type="button" class="primary">保存する</button>
+    <p id="set-fixed" class="note"></p>
+    <button id="sync-now-btn" type="button" class="secondary">今すぐ同期</button>
+    <p id="set-sync-msg" class="note"></p>
+
+    <h2>控え（バックアップ）</h2>
+    <button id="export-btn" type="button" class="secondary">控えを書き出す</button>
+    <label class="secondary file-btn">控えを読み込む
+      <input id="import-file" type="file" accept="application/json,.json" hidden>
+    </label>
+
+    <p id="app-version" class="version"></p>
+  </section>
+</main>
+
+<nav id="tab-bar" aria-label="タブ">
+  <button type="button" class="tab-btn" data-tab="add" aria-selected="true">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    <span>加算</span>
+  </button>
+  <button type="button" class="tab-btn" data-tab="history" aria-selected="false">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    <span>履歴</span>
+  </button>
+  <button type="button" class="tab-btn" data-tab="settings" aria-selected="false">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h9M18 8h1M5 16h1M10 16h9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="8" r="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="8" cy="16" r="2" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+    <span>設定</span>
+  </button>
+</nav>
+
+<script src="js/store.js"></script>
+<script src="js/drum.js"></script>
+<script src="js/sync.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

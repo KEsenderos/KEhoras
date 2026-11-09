@@ -1,0 +1,15 @@
+{
+  "name": "KEhoras",
+  "short_name": "KEhoras",
+  "description": "費やした時間を加算して、今月の合計を数えるアプリ",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F7F8FA",
+  "theme_color": "#1D4ED8",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
