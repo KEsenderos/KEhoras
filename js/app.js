@@ -1,7 +1,7 @@
 'use strict';
 /*
  * app.js ― 画面の動き（タブ・加算・取り消し・設定・控え・更新ボタン）を受け持つファイル
- * 基づく仕様書：KEhoras 仕様書 v0.2
+ * 基づく仕様書：KEhoras 仕様書 v0.4
  * 困ったとき：データの計算は store.js、同期は sync.js、ドラムは drum.js を見てください。
  */
 
@@ -111,6 +111,7 @@ function renderSettingsTab() {
   $('set-pass').value = lsGet(KEY_SYNC_PASS) || '';
   $('set-error').textContent = '';
   $('set-fixed').textContent = lastSettingsFixes.length ? TEXT.settingsFixed + lastSettingsFixes.join('、') : '';
+  $('set-theme').value = getThemeChoice();
   $('app-version').textContent = 'KEhoras v' + APP_VERSION;
 }
 
@@ -215,6 +216,12 @@ function onSaveSettings() {
   syncState.kind = 'none';
   renderAll();
   if (url && pass) syncNow(true);
+}
+
+// 見た目の選択：選んだ瞬間に画面へ当てて保存する（［保存する］は不要）
+function onThemeChange() {
+  const ok = setThemeChoice($('set-theme').value);
+  $('set-fixed').textContent = ok ? TEXT.themeChanged : TEXT.themeNotSaved;
 }
 
 function onExportClick() {
@@ -348,6 +355,7 @@ function initApp() {
   $('add-btn').addEventListener('click', onAddClick);
   $('undo-btn').addEventListener('click', onUndoClick);
   $('set-save-btn').addEventListener('click', onSaveSettings);
+  $('set-theme').addEventListener('change', onThemeChange);
   $('sync-now-btn').addEventListener('click', function () { syncNow(true); });
   $('sync-retry-btn').addEventListener('click', function () { syncNow(true); });
   $('export-btn').addEventListener('click', onExportClick);

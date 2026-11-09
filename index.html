@@ -1,7 +1,7 @@
 <!doctype html>
 <!--
   KEhoras ― 画面の骨組みのファイル
-  基づく仕様書：KEhoras 仕様書 v0.2
+  基づく仕様書：KEhoras 仕様書 v0.4
   中身の文字や数字は js/app.js が入れます。見た目は css/style.css です。
 -->
 <html lang="ja">
@@ -16,6 +16,7 @@
 <meta name="apple-mobile-web-app-title" content="KEhoras">
 <meta name="theme-color" content="#1D4ED8">
 <link rel="stylesheet" href="css/style.css">
+<script src="js/theme.js"></script>
 </head>
 <body>
 <button id="update-btn" type="button" hidden></button>
@@ -63,6 +64,15 @@
     <div class="field">加算の初期値
       <div class="row"><select id="set-add-hour" aria-label="時"></select><span>:</span><select id="set-add-min" aria-label="分"></select></div>
     </div>
+
+    <h2>見た目</h2>
+    <label class="field">色（この端末だけの設定です）
+      <select id="set-theme">
+        <option value="auto">自動（端末の設定に合わせる）</option>
+        <option value="normal">ノーマル</option>
+        <option value="dark">ダーク</option>
+      </select>
+    </label>
 
     <h2>同期（iPhoneとMacをそろえる）</h2>
     <label class="field">GASのURL

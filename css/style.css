@@ -1,6 +1,6 @@
 /*
  * style.css ― KEhoras の見た目
- * 基づく仕様書：KEhoras 仕様書 v0.2
+ * 基づく仕様書：KEhoras 仕様書 v0.4
  * 色は :root の変数にまとめています。色を変えるときはここだけ直します。
  */
 :root {
@@ -13,6 +13,15 @@
   --update: #7C3AED;
   --muted: #4B5563;
   --line: #D1D5DB;
+  --accent-text: #1D4ED8;   /* 文字・リンクに使う青（ダークでは明るい青） */
+  --track: #E5E7EB;         /* 進み具合の溝 */
+  --row-line: #E5E7EB;      /* 一覧の区切り線 */
+  --drum-dim: #6B7280;      /* ドラムの選ばれていない段 */
+  --disabled-bg: #9CA3AF;
+  --disabled-text: #FFFFFF;
+  --sec-disabled-bg: #F3F4F6;
+  --sec-disabled-text: #6B7280;
+  color-scheme: light;
   --drum-item-h: 44px;
   --tabbar-h: 60px;
 }
@@ -32,6 +41,28 @@ main {
   max-width: 480px;
   margin: 0 auto;
   padding: 16px 16px calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 24px);
+}
+
+/* ダーク（theme.js が <html data-theme="dark"> を付ける）。変えるのは色の変数だけ */
+:root[data-theme="dark"] {
+  --bg: #111827;
+  --text: #F3F4F6;
+  --card: #1F2937;
+  --accent: #2563EB;        /* ボタンの背景（白文字で約5.2） */
+  --accent-text: #60A5FA;   /* 暗い背景の上の青い文字 */
+  --ok: #4ADE80;
+  --danger: #F87171;
+  --update: #7C3AED;
+  --muted: #9CA3AF;
+  --line: #374151;
+  --track: #374151;
+  --row-line: #374151;
+  --drum-dim: #9CA3AF;
+  --disabled-bg: #374151;
+  --disabled-text: #9CA3AF;
+  --sec-disabled-bg: #1F2937;
+  --sec-disabled-text: #9CA3AF;
+  color-scheme: dark;
 }
 
 .tab-panel { display: none; }
@@ -67,7 +98,7 @@ h2:first-child { margin-top: 4px; }
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.5px;
 }
-.progress { height: 14px; background: #E5E7EB; border-radius: 7px; overflow: hidden; }
+.progress { height: 14px; background: var(--track); border-radius: 7px; overflow: hidden; }
 .progress-fill { height: 100%; width: 0; background: var(--accent); border-radius: 7px; transition: width 0.25s; }
 .progress-fill.done { background: var(--ok); }
 .progress-line {
@@ -104,7 +135,7 @@ h2:first-child { margin-top: 4px; }
   line-height: var(--drum-item-h);
   text-align: center;
   font-size: 22px;
-  color: #6B7280;
+  color: var(--drum-dim);
   font-variant-numeric: tabular-nums;
   scroll-snap-align: start;
   cursor: pointer;
@@ -132,7 +163,7 @@ button.primary {
   font-size: 20px; font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-button.primary:disabled { background: #9CA3AF; color: #FFFFFF; }
+button.primary:disabled { background: var(--disabled-bg); color: var(--disabled-text); }
 button.primary:active:not(:disabled) { filter: brightness(0.9); }
 button.secondary, label.secondary {
   display: block; width: 100%; min-height: 44px; margin-top: 10px;
@@ -140,8 +171,8 @@ button.secondary, label.secondary {
   background: var(--card); color: var(--text);
   font-size: 15px; text-align: center; line-height: 42px;
 }
-button.secondary:disabled { color: #6B7280; background: #F3F4F6; }
-.link-btn { border: 0; background: none; color: var(--accent); text-decoration: underline; font-size: 14px; padding: 4px; }
+button.secondary:disabled { color: var(--sec-disabled-text); background: var(--sec-disabled-bg); }
+.link-btn { border: 0; background: none; color: var(--accent-text); text-decoration: underline; font-size: 14px; padding: 4px; }
 .link-btn[hidden] { display: none; }
 
 .hint { min-height: 20px; margin: 6px 0 0; text-align: center; color: var(--danger); font-size: 14px; }
@@ -152,7 +183,7 @@ button.secondary:disabled { color: #6B7280; background: #F3F4F6; }
 
 /* 一覧 */
 .list { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
-.list li { display: flex; justify-content: space-between; gap: 8px; padding: 12px 14px; border-top: 1px solid #E5E7EB; font-variant-numeric: tabular-nums; }
+.list li { display: flex; justify-content: space-between; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--row-line); font-variant-numeric: tabular-nums; }
 .list li:first-child { border-top: 0; }
 .list li.empty { justify-content: center; color: var(--muted); }
 .list li strong { text-align: right; }
@@ -184,4 +215,4 @@ button.secondary:disabled { color: #6B7280; background: #F3F4F6; }
   font-size: 12px;
 }
 .tab-btn svg { width: 24px; height: 24px; }
-.tab-btn.active { color: var(--accent); font-weight: 700; }
+.tab-btn.active { color: var(--accent-text); font-weight: 700; }

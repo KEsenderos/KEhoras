@@ -1,13 +1,13 @@
 'use strict';
 /*
  * store.js ― 記録と設定を端末に保存し、合計や月の計算を行うファイル
- * 基づく仕様書：KEhoras 仕様書 v0.2
+ * 基づく仕様書：KEhoras 仕様書 v0.4
  * このファイルは「データ」と「計算」だけを受け持ちます。画面の操作は app.js にあります。
  */
 
 // ===== 定数 =====
-const APP_VERSION = '0.2';
-const CACHE_VERSION = 'keh-cache-v0.2';
+const APP_VERSION = '0.4';
+const CACHE_VERSION = 'keh-cache-v0.4';
 const DAY_START_HOUR = 0;            // 1日の区切り（時）。月の区切りもこれで決める
 const DEFAULT_TARGET_MIN = 3000;     // 目標の初期値（分）＝50時間
 const DEFAULT_ADD_MIN = 120;         // 加算の初期値（分）＝02:00
@@ -59,6 +59,8 @@ const TEXT = {
   settingsFixed: '範囲外の設定があったため、初期値で動かしています：',
   saved: '保存しました',
   exported: '控えを書き出しました',
+  themeChanged: '色を変えました',
+  themeNotSaved: '色を変えました（この端末では保存できないため、閉じると元に戻ります）',
   imported: '控えを読み込みました',
 };
 
