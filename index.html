@@ -1,7 +1,7 @@
 <!doctype html>
 <!--
   KEhoras ― 画面の骨組みのファイル
-  基づく仕様書：KEhoras 仕様書 v0.5
+  基づく仕様書：KEhoras 仕様書 v0.6
   中身の文字や数字は js/app.js が入れます。見た目は css/style.css です。
 -->
 <html lang="ja">
@@ -28,6 +28,13 @@
     <p id="total-text" class="total-text"></p>
     <div id="progress-bar" class="progress" role="progressbar" aria-label="今月の進み具合"><div id="progress-fill" class="progress-fill"></div></div>
     <p class="progress-line"><span id="remain-text"></span><span id="percent-text"></span></p>
+
+    <section class="week-card" aria-label="今週の目安">
+      <p id="week-label" class="week-label"></p>
+      <p id="week-left" class="week-left"></p>
+      <p id="week-meta" class="week-meta"></p>
+      <p id="week-rule" class="week-rule"></p>
+    </section>
 
     <div class="drum-area">
       <div class="drum-labels"><span>時</span><span>分</span></div>
@@ -72,6 +79,9 @@
     </label>
     <label class="field">年間目標時間（時間。9月〜翌年8月）
       <input id="set-year-target" type="text" inputmode="numeric" autocomplete="off">
+    </label>
+    <label class="field">1週間の始まりの曜日（今週の目安の区切り。初期値は土曜＝土曜〜金曜）
+      <select id="set-week-start"></select>
     </label>
     <div class="field">加算の初期値
       <div class="row"><select id="set-add-hour" aria-label="時"></select><span>:</span><select id="set-add-min" aria-label="分"></select></div>

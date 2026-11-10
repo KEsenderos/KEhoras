@@ -1,7 +1,7 @@
 'use strict';
 /*
  * app.js ― 画面の動き（タブ・加算・取り消し・設定・控え・更新ボタン）を受け持つファイル
- * 基づく仕様書：KEhoras 仕様書 v0.5
+ * 基づく仕様書：KEhoras 仕様書 v0.6
  * 困ったとき：データの計算は store.js、同期は sync.js、ドラムは drum.js を見てください。
  */
 
@@ -30,6 +30,26 @@ function renderAddButton() {
 }
 
 // 年間（9月〜翌年8月）の合計・残り・「届くための1か月あたり」を表示する
+function renderWeekCard(now) {
+  const w = calcWeekGuide(now);
+  const md = function (s) { const d = new Date(dayNum_(s) * 86400000); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '(' + WEEKDAY_NAMES[d.getUTCDay()] + ')'; };
+  $('week-label').textContent = TEXT.weekLabelPre + md(w.start) + '〜' + md(w.end) + (w.clipped ? TEXT.weekClipped : '');
+  const left = $('week-left');
+  left.classList.toggle('done', w.monthDone || w.weekDone);
+  if (w.monthDone) {
+    left.textContent = TEXT.weekMonthDone;
+    $('week-meta').textContent = '';
+  } else if (w.weekDone) {
+    left.textContent = TEXT.weekDone;
+    $('week-meta').textContent = TEXT.weekMeta.replace('{q}', formatHM(w.quota)).replace('{a}', formatHM(w.added)) + TEXT.weekAvgSep + TEXT.weekAvg.replace('{v}', formatHM(w.avg));
+  } else {
+    left.textContent = TEXT.weekLeftPre + formatHM(w.left);
+    $('week-meta').textContent = TEXT.weekMeta.replace('{q}', formatHM(w.quota)).replace('{a}', formatHM(w.added)) + TEXT.weekAvgSep + TEXT.weekAvg.replace('{v}', formatHM(w.avg));
+  }
+  const e = (w.weekStartDay + 6) % 7;
+  $('week-rule').textContent = TEXT.weekRule.replace('{s}', WEEKDAY_NAMES[w.weekStartDay]).replace('{e}', WEEKDAY_NAMES[e]);
+}
+
 function renderYearCard(now) {
   const y = calcYearProgress(now);
   const key = Number(y.key);
@@ -61,6 +81,7 @@ function renderAddTab() {
   else remain = TEXT.achieved + ' +' + formatHM(total - target) + ' ' + TEXT.over;
   $('remain-text').textContent = remain;
   $('remain-text').classList.toggle('done', total >= target);
+  renderWeekCard(now);
   renderYearCard(now);
   renderAddButton();
   const u = peekUndo();
@@ -133,6 +154,7 @@ function renderSettingsTab() {
   const s = loadSettings();
   $('set-target').value = String(s.targetMin / 60);
   $('set-year-target').value = String(s.yearTargetMin / 60);
+  $('set-week-start').value = String(s.weekStartDay);
   renderBaseFields();
   $('set-add-hour').value = String(Math.floor(s.addDefaultMin / 60));
   $('set-add-min').value = String(s.addDefaultMin % 60);
@@ -257,6 +279,7 @@ function onSaveSettings() {
   // 入力欄の値は、最初にまとめて読む
   const targetRaw = $('set-target').value.trim();
   const yearRaw = $('set-year-target').value.trim();
+  const weekStart = Number($('set-week-start').value);
   const addHour = Number($('set-add-hour').value);
   const addMin = Number($('set-add-min').value);
   const url = $('set-url').value.trim();
@@ -265,7 +288,7 @@ function onSaveSettings() {
   $('set-fixed').textContent = ''; // 前回の「保存しました」を残さない
   const targetHours = /^\d+$/.test(targetRaw) ? Number(targetRaw) : NaN;
   const yearHours = /^\d+$/.test(yearRaw) ? Number(yearRaw) : NaN;
-  const cand = { targetMin: targetHours * 60, addDefaultMin: addHour * 60 + addMin, yearTargetMin: yearHours * 60 };
+  const cand = { targetMin: targetHours * 60, addDefaultMin: addHour * 60 + addMin, yearTargetMin: yearHours * 60, weekStartDay: weekStart };
   const v = validateSettings(cand);
   Object.keys(v.errors).forEach(function (k) { errors.push(v.errors[k]); });
   const sv = validateSyncInput(url, pass);
@@ -278,6 +301,7 @@ function onSaveSettings() {
   s.targetMin = cand.targetMin;
   s.addDefaultMin = cand.addDefaultMin;
   s.yearTargetMin = cand.yearTargetMin;
+  s.weekStartDay = cand.weekStartDay;
   s.monthTargets[monthStr(new Date())] = cand.targetMin;
   s.updatedAt = nextTime();
   if (!saveSettings(s) || !lsSet(KEY_SYNC_URL, url) || !lsSet(KEY_SYNC_PASS, pass)) {
@@ -443,6 +467,8 @@ function initApp() {
   for (let h = 0; h <= MAX_ADD_HOURS; h++) hours.appendChild(new Option(pad2(h), String(h)));
   const mins = $('set-add-min');
   for (let m = 0; m < 60; m += MINUTE_STEP) mins.appendChild(new Option(pad2(m), String(m)));
+  const wsel = $('set-week-start');
+  for (let d = 0; d < 7; d++) wsel.appendChild(new Option(WEEKDAY_NAMES[d] + '曜日' + (d === DEFAULT_WEEK_START ? '（初期値）' : ''), String(d)));
   const bmins = $('base-min');
   for (let m = 0; m < 60; m += MINUTE_STEP) bmins.appendChild(new Option(pad2(m), String(m)));
 

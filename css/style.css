@@ -1,6 +1,6 @@
 /*
  * style.css ― KEhoras の見た目
- * 基づく仕様書：KEhoras 仕様書 v0.5
+ * 基づく仕様書：KEhoras 仕様書 v0.6
  * 色は :root の変数にまとめています。色を変えるときはここだけ直します。
  */
 :root {
@@ -155,6 +155,13 @@ h2:first-child { margin-top: 4px; }
 }
 
 /* 年間の表示（［加算］タブの下） */
+.week-card { margin: 6px 0 0; padding: 5px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; text-align: center; }
+.week-label { margin: 0; color: var(--muted); font-size: 13px; }
+.week-left { margin: 0; font-size: 21px; line-height: 1.3; font-weight: 700; font-variant-numeric: tabular-nums; }
+.week-left.done { color: var(--ok); }
+.week-meta { margin: 0; font-size: 13px; line-height: 1.35; white-space: pre-line; font-variant-numeric: tabular-nums; }
+.week-meta:empty { display: none; }
+.week-rule { margin: 1px 0 0; color: var(--muted); font-size: 12px; }
 .year-card { margin: 14px 0 0; padding: 12px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
 .year-label { margin: 0; text-align: center; color: var(--muted); font-size: 14px; }
 .year-total { margin: 2px 0 6px; text-align: center; font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }

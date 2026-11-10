@@ -1,10 +1,10 @@
 'use strict';
 /*
  * sw.js ― 電波が無くても開けるように、アプリの画面を端末に覚えておくファイル
- * 基づく仕様書：KEhoras 仕様書 v0.5
+ * 基づく仕様書：KEhoras 仕様書 v0.6
  * 新しい版は、更新ボタンが押されたときだけ切り替わります（勝手に切り替えません）。
  */
-const CACHE_VERSION = 'keh-cache-v0.5';
+const CACHE_VERSION = 'keh-cache-v0.6';
 const CACHE_PREFIX = 'keh-cache-';
 const FILES = [
   './', 'index.html', 'manifest.json', 'css/style.css',

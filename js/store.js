@@ -1,13 +1,15 @@
 'use strict';
 /*
  * store.js ― 記録と設定を端末に保存し、合計や月の計算を行うファイル
- * 基づく仕様書：KEhoras 仕様書 v0.5
+ * 基づく仕様書：KEhoras 仕様書 v0.6
  * このファイルは「データ」と「計算」だけを受け持ちます。画面の操作は app.js にあります。
  */
 
 // ===== 定数 =====
-const APP_VERSION = '0.5';
-const CACHE_VERSION = 'keh-cache-v0.5';
+const APP_VERSION = '0.6';
+const CACHE_VERSION = 'keh-cache-v0.6';
+const DEFAULT_WEEK_START = 6;         // 1週間の始まりの曜日の初期値（0=日 … 6=土）。土曜〜金曜
+const WEEKDAY_NAMES = ['日', '月', '火', '水', '木', '金', '土'];
 const DAY_START_HOUR = 0;            // 1日の区切り（時）。月の区切りもこれで決める
 const DEFAULT_TARGET_MIN = 3000;     // 目標の初期値（分）＝50時間
 const DEFAULT_ADD_MIN = 120;         // 加算の初期値（分）＝02:00
@@ -64,6 +66,16 @@ const TEXT = {
   saved: '保存しました',
   exported: '控えを書き出しました',
   yearAchieved: '年間目標達成！',
+  weekLabelPre: '今週 ',
+  weekClipped: '（今月分）',
+  weekLeftPre: 'あと ',
+  weekLeftPost: ' 加算すると目安どおり',
+  weekDone: '今週の目安は達成！',
+  weekMonthDone: '今月の目標は達成！',
+  weekMeta: '目安 {q} ／ 加算済み {a}',
+  weekAvgSep: '\n',
+  weekAvg: '目標まで 1週間平均 {v}',
+  weekRule: '1週間の区切り：{s}曜〜{e}曜（設定で変更）',
   yearLeftPre: '今月を含む残り',
   yearLeftMid: 'か月で、年間目標に届くには',
   yearLeftVal: '1か月あたり',
@@ -316,12 +328,65 @@ function calcYearProgress(now) {
   };
 }
 
+// ===== 今週の目安（v0.6） =====
+// 日付（'YYYY-MM-DD'）を、日数の計算ができる数に直す／戻す（時刻のずれを避けるため UTC で数える）
+function dayNum_(s) {
+  return Date.UTC(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10))) / 86400000;
+}
+function dayFromNum_(n) {
+  const d = new Date(n * 86400000);
+  return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate());
+}
+
+// 今週の目安。今月に絞り、「週の始まりの時点の残り」を「今月の残り日数」で割って週に配る。
+//   週は weekStartDay の曜日から7日間。月の初めと終わりで週が月をまたぐときは、今月の日だけを数える（clipped）
+//   quota ＝ 週の始まり時点の残り × 今週の今月内の日数 ÷ 今月の残り日数（切り上げ）
+//   left ＝ quota − 今週の加算済み。avg ＝ 週の始まり時点の残りの「1週間あたり」
+function calcWeekGuide(now) {
+  const s = loadSettings();
+  const today = dayStr(now);
+  const month = today.slice(0, 7);
+  const t = dayNum_(today);
+  const dow = new Date(t * 86400000).getUTCDay();          // 0=日 … 6=土
+  const wStart = t - ((dow - s.weekStartDay + 7) % 7);
+  const wEnd = wStart + 6;
+  const mFirst = dayNum_(month + '-01');
+  const y = Number(month.slice(0, 4)), mo = Number(month.slice(5));
+  const mLast = dayNum_(dayFromNum_(Date.UTC(mo === 12 ? y + 1 : y, mo === 12 ? 0 : mo, 1) / 86400000 - 1));
+  const pStart = Math.max(wStart, mFirst);
+  const pEnd = Math.min(wEnd, mLast);
+  const days = pEnd - pStart + 1;
+  const daysLeft = mLast - pStart + 1;
+  let added = 0;
+  loadRecords().forEach(function (r) {
+    if (r.deleted) return;
+    const dn = dayNum_(dayStr(new Date(r.ts)));
+    if (dn >= pStart && dn <= pEnd) added += r.minutes;
+  });
+  const total = monthTotal(month);
+  const target = monthTarget(month);
+  const remain0 = Math.max(0, target - (total - added));    // 週の始まりの時点の残り
+  const quota = remain0 > 0 ? Math.ceil(remain0 * days / daysLeft) : 0;
+  return {
+    month: month, weekStartDay: s.weekStartDay,
+    start: dayFromNum_(pStart), end: dayFromNum_(pEnd), clipped: pStart !== wStart || pEnd !== wEnd,
+    added: added, quota: quota, left: Math.max(0, quota - added),
+    avg: remain0 > 0 ? Math.ceil(remain0 * 7 / daysLeft) : 0,
+    monthDone: total >= target, weekDone: quota - added <= 0,
+  };
+}
+
 // ===== 設定 =====
 function defaultSettings() {
   return {
     targetMin: DEFAULT_TARGET_MIN, addDefaultMin: DEFAULT_ADD_MIN,
-    yearTargetMin: DEFAULT_YEAR_TARGET_MIN, monthTargets: {}, monthBase: {}, updatedAt: EPOCH_ISO,
+    yearTargetMin: DEFAULT_YEAR_TARGET_MIN, weekStartDay: DEFAULT_WEEK_START,
+    monthTargets: {}, monthBase: {}, updatedAt: EPOCH_ISO,
   };
+}
+
+function isValidWeekStart_(v) {
+  return Number.isInteger(v) && v >= 0 && v <= 6;
 }
 
 function isValidTargetMin_(v) {
@@ -352,6 +417,7 @@ function parseSettings_(o) {
     if (isValidTargetMin_(o.targetMin)) s.targetMin = o.targetMin; else if ('targetMin' in o) fixes.push('目標');
     if (isValidAddMin_(o.addDefaultMin)) s.addDefaultMin = o.addDefaultMin; else if ('addDefaultMin' in o) fixes.push('加算の初期値');
     if (isValidYearTargetMin_(o.yearTargetMin)) s.yearTargetMin = o.yearTargetMin; else if ('yearTargetMin' in o) fixes.push('年間目標');
+    if (isValidWeekStart_(o.weekStartDay)) s.weekStartDay = o.weekStartDay; else if ('weekStartDay' in o) fixes.push('週の区切り');
     if (o.monthTargets && typeof o.monthTargets === 'object') {
       Object.keys(o.monthTargets).forEach(function (k) {
         if (/^\d{4}-\d{2}$/.test(k) && isValidTargetMin_(o.monthTargets[k])) s.monthTargets[k] = o.monthTargets[k];
@@ -390,6 +456,7 @@ function validateSettings(obj) {
   const errors = {};
   if (!isValidTargetMin_(obj.targetMin)) errors.target = '目標は1〜' + MAX_TARGET_HOURS + '時間の整数で入力してください';
   if ('yearTargetMin' in obj && !isValidYearTargetMin_(obj.yearTargetMin)) errors.yearTarget = '年間目標は1〜' + MAX_YEAR_TARGET_HOURS + '時間の整数で入力してください';
+  if ('weekStartDay' in obj && !isValidWeekStart_(obj.weekStartDay)) errors.weekStart = '1週間の区切りの曜日を選んでください';
   if (!isValidAddMin_(obj.addDefaultMin)) errors.addDefault = '加算の初期値は00:05〜' + formatHM(MAX_ADD_MIN) + 'の5分刻みで選んでください';
   return { ok: Object.keys(errors).length === 0, errors: errors };
 }
