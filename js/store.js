@@ -1,13 +1,13 @@
 'use strict';
 /*
  * store.js ― 記録と設定を端末に保存し、合計や月の計算を行うファイル
- * 基づく仕様書：KEhoras 仕様書 v0.6
+ * 基づく仕様書：KEhoras 仕様書 v0.7
  * このファイルは「データ」と「計算」だけを受け持ちます。画面の操作は app.js にあります。
  */
 
 // ===== 定数 =====
-const APP_VERSION = '0.6';
-const CACHE_VERSION = 'keh-cache-v0.6';
+const APP_VERSION = '0.7';
+const CACHE_VERSION = 'keh-cache-v0.7';
 const DEFAULT_WEEK_START = 6;         // 1週間の始まりの曜日の初期値（0=日 … 6=土）。土曜〜金曜
 const WEEKDAY_NAMES = ['日', '月', '火', '水', '木', '金', '土'];
 const DAY_START_HOUR = 0;            // 1日の区切り（時）。月の区切りもこれで決める

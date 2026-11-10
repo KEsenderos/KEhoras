@@ -1,6 +1,6 @@
 /*
  * style.css ― KEhoras の見た目
- * 基づく仕様書：KEhoras 仕様書 v0.6
+ * 基づく仕様書：KEhoras 仕様書 v0.7
  * 色は :root の変数にまとめています。色を変えるときはここだけ直します。
  */
 :root {
@@ -13,6 +13,8 @@
   --update: #7C3AED;
   --muted: #4B5563;
   --line: #D1D5DB;
+  --band-fill: rgba(29, 78, 216, 0.10);   /* ドラムの選択の帯の中 */
+  --band-line: #1D4ED8;                    /* ドラムの選択の帯の線 */
   --accent-text: #1D4ED8;   /* 文字・リンクに使う青（ダークでは明るい青） */
   --track: #E5E7EB;         /* 進み具合の溝 */
   --row-line: #E5E7EB;      /* 一覧の区切り線 */
@@ -55,6 +57,8 @@ main {
   --update: #7C3AED;
   --muted: #9CA3AF;
   --line: #374151;
+  --band-fill: rgba(96, 165, 250, 0.16);
+  --band-line: #60A5FA;
   --track: #374151;
   --row-line: #374151;
   --drum-dim: #9CA3AF;
@@ -109,7 +113,7 @@ h2:first-child { margin-top: 4px; }
 #remain-text.done { color: var(--ok); font-weight: 700; }
 
 /* ドラムロール */
-.drum-area { margin: 4px 0 14px; }
+.drum-area { margin: 6px 0 14px; padding: 6px 0 4px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
 .drum-labels { display: flex; justify-content: center; gap: 0; color: var(--muted); font-size: 14px; }
 .drum-labels span { width: 96px; text-align: center; }
 .drum-wrap {
@@ -149,8 +153,10 @@ h2:first-child { margin-top: 4px; }
   left: 50%; transform: translateX(-50%);
   top: calc(var(--drum-item-h) * 2);
   width: 220px; height: var(--drum-item-h);
-  border-top: 2px solid var(--line);
-  border-bottom: 2px solid var(--line);
+  background: var(--band-fill);
+  border-top: 2px solid var(--band-line);
+  border-bottom: 2px solid var(--band-line);
+  border-radius: 6px;
   pointer-events: none;
 }
 
