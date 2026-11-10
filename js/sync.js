@@ -1,7 +1,7 @@
 'use strict';
 /*
  * sync.js ― 記録と設定をGoogleスプレッドシート（GAS）とそろえるファイル
- * 基づく仕様書：KEhoras 仕様書 v0.4
+ * 基づく仕様書：KEhoras 仕様書 v0.5
  * 考え方：両方の記録を「足し合わせ」、同じ記録は新しい方を残します。
  *        取り消した記録は「消した印」として残すので、別の端末から復活しません。
  */
@@ -23,7 +23,7 @@ function mergeRecords(a, b) {
   });
 }
 
-// 設定は updatedAt が新しい方を採り、月ごとの目標は両方を足し合わせる
+// 設定は updatedAt が新しい方を採り、月ごとの目標と「使う前の分」は両方を足し合わせる（同じ月は新しい方の設定の値）
 function mergeSettings(a, b) {
   if (!a) return b;
   if (!b) return a;
@@ -34,7 +34,14 @@ function mergeSettings(a, b) {
     win = b; lose = a;
   }
   const mt = Object.assign({}, lose.monthTargets || {}, win.monthTargets || {});
-  return { targetMin: win.targetMin, addDefaultMin: win.addDefaultMin, monthTargets: mt, updatedAt: win.updatedAt };
+  const mb = Object.assign({}, lose.monthBase || {}, win.monthBase || {});
+  // 古い版（年間の項目が無い設定）が届いても、年間目標を失わない
+  const yt = isValidYearTargetMin_(win.yearTargetMin) ? win.yearTargetMin
+    : (isValidYearTargetMin_(lose.yearTargetMin) ? lose.yearTargetMin : DEFAULT_YEAR_TARGET_MIN);
+  return {
+    targetMin: win.targetMin, addDefaultMin: win.addDefaultMin, yearTargetMin: yt,
+    monthTargets: mt, monthBase: mb, updatedAt: win.updatedAt,
+  };
 }
 
 // ===== 通信 =====

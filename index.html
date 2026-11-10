@@ -1,7 +1,7 @@
 <!doctype html>
 <!--
   KEhoras ― 画面の骨組みのファイル
-  基づく仕様書：KEhoras 仕様書 v0.4
+  基づく仕様書：KEhoras 仕様書 v0.5
   中身の文字や数字は js/app.js が入れます。見た目は css/style.css です。
 -->
 <html lang="ja">
@@ -44,6 +44,15 @@
     <button id="undo-btn" type="button" class="secondary"></button>
     <p id="undo-note" class="note" aria-live="polite"></p>
     <p id="storage-warn" class="error-text"></p>
+
+    <section class="year-card" aria-label="年間の進み具合">
+      <p id="year-label" class="year-label"></p>
+      <p id="year-total-text" class="year-total"></p>
+      <div class="progress progress-thin" role="progressbar" aria-label="年間の進み具合"><div id="year-progress-fill" class="progress-fill"></div></div>
+      <p class="progress-line"><span id="year-remain-text"></span><span id="year-percent-text"></span></p>
+      <p id="year-avg-text" class="year-avg"><span id="year-avg-pre" class="year-avg-pre"></span><span id="year-avg-val" class="year-avg-val"></span></p>
+    </section>
+
     <p class="sync-line"><span id="sync-status"></span> <button id="sync-retry-btn" type="button" class="link-btn" hidden>もう一度</button></p>
   </section>
 
@@ -61,9 +70,24 @@
     <label class="field">目標時間（時間）
       <input id="set-target" type="text" inputmode="numeric" autocomplete="off">
     </label>
+    <label class="field">年間目標時間（時間。9月〜翌年8月）
+      <input id="set-year-target" type="text" inputmode="numeric" autocomplete="off">
+    </label>
     <div class="field">加算の初期値
       <div class="row"><select id="set-add-hour" aria-label="時"></select><span>:</span><select id="set-add-min" aria-label="分"></select></div>
     </div>
+
+    <h2>使う前の分（年度の途中から使い始めた場合）</h2>
+    <p class="note left">このアプリを使う前に数えていた時間を、月ごとに入れます。入れ直すと、その月の分が置き換わります。</p>
+    <label class="field">月
+      <select id="base-month"></select>
+    </label>
+    <div class="field">使う前の分の合計
+      <div class="row"><input id="base-hour" type="text" inputmode="numeric" autocomplete="off" aria-label="時間"><span>時間</span><select id="base-min" aria-label="分"></select><span>分</span></div>
+    </div>
+    <p id="base-error" class="error-text"></p>
+    <button id="base-set-btn" type="button" class="secondary">この月に入れる</button>
+    <p id="base-msg" class="note"></p>
 
     <h2>見た目</h2>
     <label class="field">色（この端末だけの設定です）

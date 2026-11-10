@@ -1,6 +1,6 @@
 /*
  * style.css ― KEhoras の見た目
- * 基づく仕様書：KEhoras 仕様書 v0.4
+ * 基づく仕様書：KEhoras 仕様書 v0.5
  * 色は :root の変数にまとめています。色を変えるときはここだけ直します。
  */
 :root {
@@ -154,6 +154,20 @@ h2:first-child { margin-top: 4px; }
   pointer-events: none;
 }
 
+/* 年間の表示（［加算］タブの下） */
+.year-card { margin: 14px 0 0; padding: 12px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+.year-label { margin: 0; text-align: center; color: var(--muted); font-size: 14px; }
+.year-total { margin: 2px 0 6px; text-align: center; font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.progress-thin { height: 10px; border-radius: 5px; }
+.progress-thin .progress-fill { border-radius: 5px; }
+.year-card .progress-line { margin: 6px 0 4px; }
+.year-avg { margin: 6px 0 0; text-align: center; font-variant-numeric: tabular-nums; }
+.year-avg span { display: block; }
+.year-avg-pre { font-size: 13px; color: var(--muted); }
+.year-avg-val { font-size: 20px; font-weight: 700; }
+.year-avg.done { color: var(--ok); }
+#year-remain-text.done { color: var(--ok); font-weight: 700; }
+
 /* ボタン */
 button, .file-btn { font-family: inherit; }
 button.primary {
@@ -177,6 +191,7 @@ button.secondary:disabled { color: var(--sec-disabled-text); background: var(--s
 
 .hint { min-height: 20px; margin: 6px 0 0; text-align: center; color: var(--danger); font-size: 14px; }
 .note { min-height: 20px; margin: 8px 0 0; text-align: center; color: var(--muted); font-size: 14px; white-space: pre-wrap; }
+.note.left { text-align: left; margin: 0 0 6px; }
 .error-text { margin: 8px 0; color: var(--danger); font-size: 14px; white-space: pre-wrap; }
 .sync-line { margin: 10px 0 0; text-align: center; font-size: 13px; color: var(--muted); min-height: 20px; }
 #sync-status.error { color: var(--danger); }
@@ -196,6 +211,8 @@ button.secondary:disabled { color: var(--sec-disabled-text); background: var(--s
   font-size: 16px; color: var(--text); font-family: inherit;
 }
 .row { display: flex; align-items: center; gap: 8px; }
+.field .row input { width: 80px; margin-top: 4px; }
+.row span { white-space: nowrap; }
 .row select { margin-top: 4px; }
 .version { margin: 24px 0 0; text-align: center; color: var(--muted); font-size: 13px; }
 

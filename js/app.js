@@ -1,7 +1,7 @@
 'use strict';
 /*
  * app.js ― 画面の動き（タブ・加算・取り消し・設定・控え・更新ボタン）を受け持つファイル
- * 基づく仕様書：KEhoras 仕様書 v0.4
+ * 基づく仕様書：KEhoras 仕様書 v0.5
  * 困ったとき：データの計算は store.js、同期は sync.js、ドラムは drum.js を見てください。
  */
 
@@ -29,6 +29,21 @@ function renderAddButton() {
   $('add-hint').textContent = mins <= 0 ? TEXT.zeroHint : '';
 }
 
+// 年間（9月〜翌年8月）の合計・残り・「届くための1か月あたり」を表示する
+function renderYearCard(now) {
+  const y = calcYearProgress(now);
+  const key = Number(y.key);
+  $('year-label').textContent = '年間 ' + key + '年度（9月〜8月）';
+  $('year-total-text').textContent = formatHM(y.total) + ' / ' + formatHM(y.target);
+  $('year-progress-fill').style.width = y.pct + '%';
+  $('year-progress-fill').classList.toggle('done', y.done);
+  $('year-percent-text').textContent = y.pct + '%';
+  $('year-remain-text').textContent = y.done ? TEXT.yearAchieved : TEXT.remain + ' ' + formatHM(y.remain);
+  $('year-remain-text').classList.toggle('done', y.done);
+  $('year-avg-pre').textContent = y.done ? '' : TEXT.yearLeftPre + y.monthsLeft + TEXT.yearLeftMid;
+  $('year-avg-val').textContent = y.done ? '' : TEXT.yearLeftVal + ' ' + formatHM(y.perMonth) + ' ' + TEXT.yearLeftPost;
+}
+
 function renderAddTab() {
   const now = new Date();
   const month = monthStr(now);
@@ -46,6 +61,7 @@ function renderAddTab() {
   else remain = TEXT.achieved + ' +' + formatHM(total - target) + ' ' + TEXT.over;
   $('remain-text').textContent = remain;
   $('remain-text').classList.toggle('done', total >= target);
+  renderYearCard(now);
   renderAddButton();
   const u = peekUndo();
   const ub = $('undo-btn');
@@ -61,10 +77,21 @@ function renderHistoryTab() {
     .sort(function (a, b) { return a.ts < b.ts ? 1 : (a.ts > b.ts ? -1 : 0); });
   const ul = $('history-list');
   ul.innerHTML = '';
-  if (list.length === 0) {
+  if (list.length === 0 && monthBase(cur) === 0) {
     const li = document.createElement('li');
     li.className = 'empty';
     li.textContent = TEXT.noRecords;
+    ul.appendChild(li);
+  }
+  const base = monthBase(cur);
+  if (base > 0) {
+    const li = document.createElement('li');
+    const a = document.createElement('span');
+    a.textContent = TEXT.baseRow;
+    const b = document.createElement('strong');
+    b.textContent = '+' + formatHM(base);
+    li.appendChild(a);
+    li.appendChild(b);
     ul.appendChild(li);
   }
   list.forEach(function (r) {
@@ -105,6 +132,8 @@ function renderHistoryTab() {
 function renderSettingsTab() {
   const s = loadSettings();
   $('set-target').value = String(s.targetMin / 60);
+  $('set-year-target').value = String(s.yearTargetMin / 60);
+  renderBaseFields();
   $('set-add-hour').value = String(Math.floor(s.addDefaultMin / 60));
   $('set-add-min').value = String(s.addDefaultMin % 60);
   $('set-url').value = lsGet(KEY_SYNC_URL) || '';
@@ -113,6 +142,47 @@ function renderSettingsTab() {
   $('set-fixed').textContent = lastSettingsFixes.length ? TEXT.settingsFixed + lastSettingsFixes.join('、') : '';
   $('set-theme').value = getThemeChoice();
   $('app-version').textContent = 'KEhoras v' + APP_VERSION;
+}
+
+// 「使う前の分」の入力欄：今の年度の、今月までの月を選べる。選んだ月の今の値を入れる
+function renderBaseFields() {
+  const cur = monthStr(new Date());
+  const sel = $('base-month');
+  const keep = sel.value;
+  sel.innerHTML = '';
+  yearMonths(yearKeyOfMonth(cur)).filter(function (m) { return m <= cur; }).forEach(function (m) {
+    sel.appendChild(new Option(m.slice(0, 4) + '年' + Number(m.slice(5)) + '月', m));
+  });
+  sel.value = Array.prototype.some.call(sel.options, function (o) { return o.value === keep; }) ? keep : cur;
+  fillBaseValue();
+}
+
+function fillBaseValue() {
+  const v = monthBase($('base-month').value);
+  $('base-hour').value = String(Math.floor(v / 60));
+  $('base-min').value = String(v % 60);
+}
+
+// 「この月に入れる」：選んだ月の「使う前の分」を置き換える
+function onBaseSet() {
+  const month = $('base-month').value;
+  const hRaw = $('base-hour').value.trim();
+  const min = Number($('base-min').value);
+  $('base-msg').textContent = '';
+  const h = /^\d+$/.test(hRaw) ? Number(hRaw) : NaN;
+  const total = h * 60 + min;
+  if (!isValidBaseMin_(total)) {
+    $('base-error').textContent = '時間は0〜' + (MAX_BASE_MIN / 60) + 'の整数で入力してください';
+    return;
+  }
+  $('base-error').textContent = '';
+  let ok = false;
+  try { ok = setMonthBase(month, total); } catch (e) { ok = false; }
+  $('base-msg').textContent = ok
+    ? Number(month.slice(5)) + '月の使う前の分を ' + formatHM(total) + ' ' + TEXT.baseSet
+    : TEXT.saveFail;
+  renderAll();
+  if (isSyncConfigured()) syncNow(true);
 }
 
 function renderSyncStatus() {
@@ -138,6 +208,7 @@ function switchTab(tabId) {
   TAB_IDS.forEach(function (id) {
     $('panel-' + id).classList.toggle('active', id === tabId);
   });
+  if (tabId === 'settings' && typeof renderSettingsTab === 'function') renderSettingsTab(); // 同期で変わった値も最新にする
   document.querySelectorAll('.tab-btn').forEach(function (b) {
     const on = b.dataset.tab === tabId;
     b.classList.toggle('active', on);
@@ -185,6 +256,7 @@ function onUndoClick() {
 function onSaveSettings() {
   // 入力欄の値は、最初にまとめて読む
   const targetRaw = $('set-target').value.trim();
+  const yearRaw = $('set-year-target').value.trim();
   const addHour = Number($('set-add-hour').value);
   const addMin = Number($('set-add-min').value);
   const url = $('set-url').value.trim();
@@ -192,7 +264,8 @@ function onSaveSettings() {
   const errors = [];
   $('set-fixed').textContent = ''; // 前回の「保存しました」を残さない
   const targetHours = /^\d+$/.test(targetRaw) ? Number(targetRaw) : NaN;
-  const cand = { targetMin: targetHours * 60, addDefaultMin: addHour * 60 + addMin };
+  const yearHours = /^\d+$/.test(yearRaw) ? Number(yearRaw) : NaN;
+  const cand = { targetMin: targetHours * 60, addDefaultMin: addHour * 60 + addMin, yearTargetMin: yearHours * 60 };
   const v = validateSettings(cand);
   Object.keys(v.errors).forEach(function (k) { errors.push(v.errors[k]); });
   const sv = validateSyncInput(url, pass);
@@ -204,6 +277,7 @@ function onSaveSettings() {
   const s = loadSettings();
   s.targetMin = cand.targetMin;
   s.addDefaultMin = cand.addDefaultMin;
+  s.yearTargetMin = cand.yearTargetMin;
   s.monthTargets[monthStr(new Date())] = cand.targetMin;
   s.updatedAt = nextTime();
   if (!saveSettings(s) || !lsSet(KEY_SYNC_URL, url) || !lsSet(KEY_SYNC_PASS, pass)) {
@@ -356,6 +430,8 @@ function initApp() {
   $('undo-btn').addEventListener('click', onUndoClick);
   $('set-save-btn').addEventListener('click', onSaveSettings);
   $('set-theme').addEventListener('change', onThemeChange);
+  $('base-month').addEventListener('change', fillBaseValue);
+  $('base-set-btn').addEventListener('click', onBaseSet);
   $('sync-now-btn').addEventListener('click', function () { syncNow(true); });
   $('sync-retry-btn').addEventListener('click', function () { syncNow(true); });
   $('export-btn').addEventListener('click', onExportClick);
@@ -367,6 +443,8 @@ function initApp() {
   for (let h = 0; h <= MAX_ADD_HOURS; h++) hours.appendChild(new Option(pad2(h), String(h)));
   const mins = $('set-add-min');
   for (let m = 0; m < 60; m += MINUTE_STEP) mins.appendChild(new Option(pad2(m), String(m)));
+  const bmins = $('base-min');
+  for (let m = 0; m < 60; m += MINUTE_STEP) bmins.appendChild(new Option(pad2(m), String(m)));
 
   renderSettingsTab();
   switchTab(lsGet(KEY_LAST_TAB));

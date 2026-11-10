@@ -1,13 +1,13 @@
 'use strict';
 /*
  * store.js ― 記録と設定を端末に保存し、合計や月の計算を行うファイル
- * 基づく仕様書：KEhoras 仕様書 v0.4
+ * 基づく仕様書：KEhoras 仕様書 v0.5
  * このファイルは「データ」と「計算」だけを受け持ちます。画面の操作は app.js にあります。
  */
 
 // ===== 定数 =====
-const APP_VERSION = '0.4';
-const CACHE_VERSION = 'keh-cache-v0.4';
+const APP_VERSION = '0.5';
+const CACHE_VERSION = 'keh-cache-v0.5';
 const DAY_START_HOUR = 0;            // 1日の区切り（時）。月の区切りもこれで決める
 const DEFAULT_TARGET_MIN = 3000;     // 目標の初期値（分）＝50時間
 const DEFAULT_ADD_MIN = 120;         // 加算の初期値（分）＝02:00
@@ -15,6 +15,10 @@ const MINUTE_STEP = 5;               // 分のドラムの刻み
 const MAX_ADD_HOURS = 12;            // 時のドラムの最大
 const MAX_ADD_MIN = MAX_ADD_HOURS * 60 + 55; // 1回の加算の最大（分）＝12:55
 const MAX_TARGET_HOURS = 999;        // 目標の最大（時間）
+const YEAR_START_MONTH = 9;          // 年度の始まりの月（9月〜翌年8月）
+const DEFAULT_YEAR_TARGET_MIN = 36000; // 年間目標の初期値（分）＝600時間
+const MAX_YEAR_TARGET_HOURS = 9999;  // 年間目標の最大（時間）
+const MAX_BASE_MIN = 44640;          // 「使う前の分」の1か月の最大（分）＝744時間
 const MAX_RECORDS = 5000;            // 記録の最大件数
 const TOMBSTONE_KEEP_DAYS = 180;     // 消した印を残す日数
 const SYNC_MIN_INTERVAL_MS = 300000; // 前面に戻ったときの同期の最短間隔（5分）
@@ -59,6 +63,13 @@ const TEXT = {
   settingsFixed: '範囲外の設定があったため、初期値で動かしています：',
   saved: '保存しました',
   exported: '控えを書き出しました',
+  yearAchieved: '年間目標達成！',
+  yearLeftPre: '今月を含む残り',
+  yearLeftMid: 'か月で、年間目標に届くには',
+  yearLeftVal: '1か月あたり',
+  yearLeftPost: 'ずつ',
+  baseRow: '使う前の分',
+  baseSet: 'にしました',
   themeChanged: '色を変えました',
   themeNotSaved: '色を変えました（この端末では保存できないため、閉じると元に戻ります）',
   imported: '控えを読み込みました',
@@ -239,31 +250,90 @@ function undoLast() {
 }
 
 // その月の合計（分）。消された記録は数えない
-function monthTotal(month) {
-  let sum = 0;
+// すべての月の合計（分）を一度に数える。記録の合計に「使う前の分」を足したもの
+function allMonthTotals() {
+  const t = {};
   loadRecords().forEach(function (r) {
-    if (!r.deleted && r.month === month) sum += r.minutes;
+    if (!r.deleted) t[r.month] = (t[r.month] || 0) + r.minutes;
   });
-  return sum;
+  const base = loadSettings().monthBase;
+  Object.keys(base).forEach(function (m) {
+    if (base[m] > 0) t[m] = (t[m] || 0) + base[m];
+  });
+  return t;
+}
+
+function monthTotal(month) {
+  return allMonthTotals()[month] || 0;
+}
+
+// その月の「使う前の分」（分）。入れていなければ 0
+function monthBase(month) {
+  return loadSettings().monthBase[month] || 0;
 }
 
 // 記録のある月（今月を除く）を新しい順に
 function listMonths() {
   const cur = monthStr(new Date());
-  const set = {};
-  loadRecords().forEach(function (r) {
-    if (!r.deleted && r.month !== cur) set[r.month] = true;
-  });
-  return Object.keys(set).sort().reverse();
+  const t = allMonthTotals();
+  return Object.keys(t).filter(function (m) { return m !== cur && t[m] > 0; }).sort().reverse();
+}
+
+// ===== 年度（9月〜翌年8月） =====
+// 'YYYY-MM' → 年度の名前（始まりの年。2026-09〜2027-08 は '2026'）
+function yearKeyOfMonth(month) {
+  const y = Number(month.slice(0, 4));
+  return String(Number(month.slice(5)) >= YEAR_START_MONTH ? y : y - 1);
+}
+
+// 年度の12か月（'YYYY-MM'）を古い順に
+function yearMonths(key) {
+  const y = Number(key);
+  const list = [];
+  for (let i = 0; i < 12; i++) {
+    const m = YEAR_START_MONTH + i;
+    list.push(m <= 12 ? y + '-' + pad2(m) : (y + 1) + '-' + pad2(m - 12));
+  }
+  return list;
+}
+
+// 年間の進み具合。now の月が属する年度について数える
+// monthsLeft は「今月を含む」残りの月数。perMonth は目標に届くための1か月あたりの分（切り上げ）
+function calcYearProgress(now) {
+  const cur = monthStr(now);
+  const key = yearKeyOfMonth(cur);
+  const months = yearMonths(key);
+  const t = allMonthTotals();
+  let total = 0;
+  months.forEach(function (m) { total += t[m] || 0; });
+  const target = loadSettings().yearTargetMin;
+  const monthsLeft = months.filter(function (m) { return m >= cur; }).length;
+  const remain = Math.max(0, target - total);
+  return {
+    key: key, total: total, target: target, remain: remain, monthsLeft: monthsLeft,
+    perMonth: remain > 0 ? Math.ceil(remain / monthsLeft) : 0,
+    done: total >= target, pct: Math.min(100, Math.floor(total * 100 / target)),
+  };
 }
 
 // ===== 設定 =====
 function defaultSettings() {
-  return { targetMin: DEFAULT_TARGET_MIN, addDefaultMin: DEFAULT_ADD_MIN, monthTargets: {}, updatedAt: EPOCH_ISO };
+  return {
+    targetMin: DEFAULT_TARGET_MIN, addDefaultMin: DEFAULT_ADD_MIN,
+    yearTargetMin: DEFAULT_YEAR_TARGET_MIN, monthTargets: {}, monthBase: {}, updatedAt: EPOCH_ISO,
+  };
 }
 
 function isValidTargetMin_(v) {
   return Number.isInteger(v) && v >= 60 && v <= MAX_TARGET_HOURS * 60 && v % 60 === 0;
+}
+
+function isValidYearTargetMin_(v) {
+  return Number.isInteger(v) && v >= 60 && v <= MAX_YEAR_TARGET_HOURS * 60 && v % 60 === 0;
+}
+
+function isValidBaseMin_(v) {
+  return Number.isInteger(v) && v >= 0 && v <= MAX_BASE_MIN && v % MINUTE_STEP === 0;
 }
 
 function isValidAddMin_(v) {
@@ -273,9 +343,31 @@ function isValidAddMin_(v) {
 // 読み込み時に直した項目の名前（画面に知らせる用）
 let lastSettingsFixes = [];
 
-function loadSettings() {
+// 保存されていた設定（または控え・同期で届いた設定）を、範囲を確かめて取り込む。
+// 戻り値は { settings, fixes }。範囲外の項目は初期値で動かし、その項目名を fixes に入れる
+function parseSettings_(o) {
   const s = defaultSettings();
-  lastSettingsFixes = [];
+  const fixes = [];
+  if (o && typeof o === 'object') {
+    if (isValidTargetMin_(o.targetMin)) s.targetMin = o.targetMin; else if ('targetMin' in o) fixes.push('目標');
+    if (isValidAddMin_(o.addDefaultMin)) s.addDefaultMin = o.addDefaultMin; else if ('addDefaultMin' in o) fixes.push('加算の初期値');
+    if (isValidYearTargetMin_(o.yearTargetMin)) s.yearTargetMin = o.yearTargetMin; else if ('yearTargetMin' in o) fixes.push('年間目標');
+    if (o.monthTargets && typeof o.monthTargets === 'object') {
+      Object.keys(o.monthTargets).forEach(function (k) {
+        if (/^\d{4}-\d{2}$/.test(k) && isValidTargetMin_(o.monthTargets[k])) s.monthTargets[k] = o.monthTargets[k];
+      });
+    }
+    if (o.monthBase && typeof o.monthBase === 'object') {
+      Object.keys(o.monthBase).forEach(function (k) {
+        if (/^\d{4}-\d{2}$/.test(k) && isValidBaseMin_(o.monthBase[k])) s.monthBase[k] = o.monthBase[k];
+      });
+    }
+    if (typeof o.updatedAt === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(o.updatedAt)) s.updatedAt = o.updatedAt;
+  }
+  return { settings: s, fixes: fixes };
+}
+
+function loadSettings() {
   let o = null;
   try {
     const raw = lsGet(KEY_SETTINGS);
@@ -283,28 +375,21 @@ function loadSettings() {
   } catch (e) {
     o = null;
   }
-  if (o && typeof o === 'object') {
-    if (isValidTargetMin_(o.targetMin)) s.targetMin = o.targetMin; else if ('targetMin' in o) lastSettingsFixes.push('目標');
-    if (isValidAddMin_(o.addDefaultMin)) s.addDefaultMin = o.addDefaultMin; else if ('addDefaultMin' in o) lastSettingsFixes.push('加算の初期値');
-    if (o.monthTargets && typeof o.monthTargets === 'object') {
-      Object.keys(o.monthTargets).forEach(function (k) {
-        if (/^\d{4}-\d{2}$/.test(k) && isValidTargetMin_(o.monthTargets[k])) s.monthTargets[k] = o.monthTargets[k];
-      });
-    }
-    if (typeof o.updatedAt === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(o.updatedAt)) s.updatedAt = o.updatedAt;
-  }
-  bumpLastTime_(s.updatedAt);
-  return s;
+  const r = parseSettings_(o);
+  lastSettingsFixes = r.fixes;
+  bumpLastTime_(r.settings.updatedAt);
+  return r.settings;
 }
 
 function saveSettings(obj) {
   return lsSet(KEY_SETTINGS, JSON.stringify(obj));
 }
 
-// 範囲チェック。入力は { targetMin, addDefaultMin }（分）。戻り値は { ok, errors:{項目:理由} }
+// 範囲チェック。入力は { targetMin, addDefaultMin, yearTargetMin（省略可） }（分）。戻り値は { ok, errors:{項目:理由} }
 function validateSettings(obj) {
   const errors = {};
   if (!isValidTargetMin_(obj.targetMin)) errors.target = '目標は1〜' + MAX_TARGET_HOURS + '時間の整数で入力してください';
+  if ('yearTargetMin' in obj && !isValidYearTargetMin_(obj.yearTargetMin)) errors.yearTarget = '年間目標は1〜' + MAX_YEAR_TARGET_HOURS + '時間の整数で入力してください';
   if (!isValidAddMin_(obj.addDefaultMin)) errors.addDefault = '加算の初期値は00:05〜' + formatHM(MAX_ADD_MIN) + 'の5分刻みで選んでください';
   return { ok: Object.keys(errors).length === 0, errors: errors };
 }
@@ -335,6 +420,15 @@ function ensureMonthTarget(month) {
   }
 }
 
+// その月の「使う前の分」を min（分）にする（置き換え）。設定の更新時刻を進めて保存する。戻り値は保存できたか
+function setMonthBase(month, min) {
+  if (!/^\d{4}-\d{2}$/.test(month) || !isValidBaseMin_(min)) throw new Error('BAD_BASE');
+  const s = loadSettings();
+  s.monthBase[month] = min;
+  s.updatedAt = nextTime();
+  return saveSettings(s);
+}
+
 // ===== 控え（バックアップ） =====
 function exportBackup() {
   return JSON.stringify({
@@ -361,17 +455,7 @@ function importBackup(text) {
   lsSet(KEY_PREV_BACKUP, JSON.stringify({ savedAt: new Date().toISOString(), records: local, settings: loadSettings() }));
   if (!saveRecords(merged)) throw new Error('SAVE_FAIL');
   if (settingsIn) {
-    const tmp = Object.assign(defaultSettings(), {
-      targetMin: isValidTargetMin_(settingsIn.targetMin) ? settingsIn.targetMin : DEFAULT_TARGET_MIN,
-      addDefaultMin: isValidAddMin_(settingsIn.addDefaultMin) ? settingsIn.addDefaultMin : DEFAULT_ADD_MIN,
-      monthTargets: {},
-      updatedAt: typeof settingsIn.updatedAt === 'string' ? settingsIn.updatedAt : EPOCH_ISO,
-    });
-    if (settingsIn.monthTargets && typeof settingsIn.monthTargets === 'object') {
-      Object.keys(settingsIn.monthTargets).forEach(function (k) {
-        if (/^\d{4}-\d{2}$/.test(k) && isValidTargetMin_(settingsIn.monthTargets[k])) tmp.monthTargets[k] = settingsIn.monthTargets[k];
-      });
-    }
+    const tmp = parseSettings_(settingsIn).settings;
     saveSettings(mergeSettings(loadSettings(), tmp));
   }
   const localIds = {};
